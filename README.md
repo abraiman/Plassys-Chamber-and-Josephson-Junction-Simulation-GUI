@@ -5,7 +5,7 @@ A desktop application for designing Josephson-junction fabrication layouts, simu
 **To launch the app, run:**
 
 ```
-python3 main_gui.py
+python3 src/lib/main_gui.py
 ```
 
 See `requirements.txt` for the full setup process (required packages, optional voice/AI features, and exact tested versions).
