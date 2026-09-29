@@ -1,0 +1,208 @@
+# =============================================================================
+# Plassys Shadow Simulator -- requirements.txt
+# =============================================================================
+#
+# This file lists every Python package the app needs, and this header walks
+# through the ENTIRE setup process end to end -- not just "pip install -r
+# requirements.txt" -- because two features (voice-driven measurement and the
+# "Ask AI" assistant) need more than a pip package to actually work. Skip
+# those two steps if you don't plan to use those two features; every other
+# part of the app works with nothing beyond the pip install below.
+#
+# Tested and confirmed working on:
+#   Python 3.11.15
+#   with the exact package versions pinned below.
+#
+# Minimum Python version: 3.11. (numpy 2.4 and scipy 1.17, pinned below,
+# both require Python 3.11+; every other dependency here would tolerate an
+# older interpreter, so 3.11 is the real floor for this exact version set.)
+# If you deliberately use older numpy/scipy versions instead, Python 3.10
+# should also work, but that combination has not been tested against this
+# app.
+#
+# IF YOU ARE PACKAGING THIS AS A DESKTOP APP (see packaging/), AVOID
+# PYTHON 3.12.0 EXACTLY. It has a confirmed CPython bug (in code.replace(),
+# used internally by PyInstaller's build step) that makes scipy.stats crash
+# on launch with "NameError: name 'obj' is not defined" -- nothing to do
+# with this app's own code, scipy, or PyInstaller's design, and already
+# fixed upstream for Python 3.12.1 and later. Use 3.12.1+ or 3.11.x instead.
+# Running the app directly with `python3 main_gui.py` (not packaged) is
+# unaffected either way.
+#
+#
+# STEP 1 -- Install Python 3.11 or newer
+# -----------------------------------------------------------------------------
+#   Check what you have:   python3 --version
+#   If you need to install/upgrade Python, get it from https://www.python.org
+#   (or your OS package manager / pyenv / conda). A virtual environment is
+#   strongly recommended so this app's exact package versions don't collide
+#   with anything else on your system:
+#
+#       python3 -m venv plassys_env
+#       source plassys_env/bin/activate        (Windows: plassys_env\Scripts\activate)
+#
+#
+# STEP 2 -- Install the required packages
+# -----------------------------------------------------------------------------
+#       pip install -r requirements.txt
+#
+#   This installs everything needed to launch the app and use every tab
+#   EXCEPT hands-free voice measurement and the AI assistant (see Steps 3-4).
+#
+#
+# STEP 3 -- (Optional) Enable hands-free voice measurement
+# -----------------------------------------------------------------------------
+# The Measure Resistance tab can transcribe spoken readings instead of typed
+# ones. This needs three things beyond the base install:
+#
+#   3a. A working microphone, obviously.
+#
+#   3b. PortAudio, a system-level (non-Python) audio library that the
+#       `sounddevice` package below depends on. On Windows and macOS, the
+#       PyPI wheel for `sounddevice` already bundles PortAudio, so nothing
+#       extra is needed there. On Linux, it is usually NOT bundled and must
+#       be installed separately through your system package manager --
+#       confirmed directly while preparing this release (installing the
+#       `sounddevice` pip package alone was not sufficient on a fresh Linux
+#       machine; it raised "OSError: PortAudio library not found" until the
+#       system library below was installed):
+#
+#           Debian / Ubuntu:   sudo apt-get install libportaudio2
+#           Fedora:            sudo dnf install portaudio
+#           Arch:              sudo pacman -S portaudio
+#           macOS (Homebrew):  brew install portaudio   (usually not needed --
+#                               only if the bundled wheel doesn't work for you)
+#
+#   3c. Uncomment ONE (or both, to A/B test them) of the two speech-engine
+#       lines in the "OPTIONAL" section below, then re-run
+#       `pip install -r requirements.txt`:
+#
+#         - faster-whisper: stronger general-purpose accuracy; downloads its
+#           own model weights automatically the first time it runs
+#           (~75-500MB depending on model size), then works fully offline.
+#           Nothing else to configure.
+#
+#         - vosk: smaller and faster, with a constrained-vocabulary mode
+#           tuned for exactly this tab's needs (digits, "kilohm", "open",
+#           "short", a handful of commands). Unlike faster-whisper, Vosk
+#           does NOT download its model automatically -- you must download
+#           one yourself from https://alphacephei.com/vosk/models (the
+#           "vosk-model-small-en-us-0.15" model is a good default, ~40MB),
+#           unzip it anywhere on disk, and point the app at that folder from
+#           the Measure Resistance tab's engine picker.
+#
+#       The app lets you pick whichever engine you installed (or switch
+#       between both, if you installed both) from the Measure Resistance
+#       tab's "ENGINE:" dropdown.
+#
+#
+# STEP 4 -- (Optional) Enable the "Ask AI" assistant
+# -----------------------------------------------------------------------------
+# The "Ask AI" button (visible from every tab) answers open-ended questions
+# about the app, your design, or the underlying fabrication physics. It is
+# purely explanatory -- it never generates or edits a recipe. It needs a
+# separate, free, local AI runtime called Ollama -- this is NOT a pip
+# package, it's its own small application:
+#
+#   4a. Install Ollama itself:
+#         - macOS:            brew install ollama        (or download from ollama.com)
+#         - Windows / Linux:  download the installer from https://ollama.com
+#
+#   4b. Start it once (it then runs quietly in the background / as a
+#       service on most installs):
+#         ollama serve
+#
+#   4c. Download the vision-capable model the assistant uses (one-time,
+#       several GB):
+#         ollama pull qwen2.5vl:7b
+#
+#       If you're on a lower-RAM machine (e.g. an Intel Mac, or under
+#       16GB RAM) and the 7b model feels slow, use the smaller model instead
+#       and change DEFAULT_MODEL near the top of ai_assistant.py to match:
+#         ollama pull qwen2.5vl:3b
+#
+#   4d. Uncomment the `ollama` line in the "OPTIONAL" section below and
+#       re-run `pip install -r requirements.txt`.
+#
+#   Everything runs entirely on your own machine -- no API key, no account,
+#   no data leaves your computer.
+#
+#
+# STEP 5 -- A note on GDS / KLayout import (no extra install needed)
+# -----------------------------------------------------------------------------
+# The Create / Import tab can import a real .gds layout file, or the actual
+# KLayout Python script that generated one. You do NOT need KLayout itself
+# installed for either -- `gdstk` (in REQUIRED below) parses .gds files
+# directly, and klayout_pya_shim.py provides a small, self-contained stand-in
+# for the specific part of KLayout's own `pya` scripting API that a typical
+# junction-generator script uses, so that script runs exactly as written.
+#
+#
+# STEP 6 -- Run it
+# -----------------------------------------------------------------------------
+#       python3 main_gui.py
+#
+#   See README.md for a full tour of every tab and what each file in this
+#   project does.
+#
+#
+# Known environment gotchas (already worked around in the code, documented
+# here in case you ever see the underlying symptom while debugging):
+#   - On some machines, importing PySide6 after certain matplotlib internals
+#     have already run can throw "AttributeError: '_SixMetaPathImporter'
+#     object has no attribute '_path'". main_gui.py works around this
+#     structurally (see the comment block at the top of that file) -- you
+#     should never see this, but if a similar-looking crash ever reappears
+#     after a future dependency upgrade, that comment block is the place to
+#     start.
+#   - On macOS, a "Could not find the Qt platform plugin 'cocoa'" error
+#     usually means a different/older Qt install elsewhere on the system is
+#     shadowing PySide6's own bundled plugins. main_gui.py already points Qt
+#     at PySide6's own plugin directory explicitly at startup to avoid this;
+#     if you still see it, check for another PyQt5/PyQt6/PySide2 install on
+#     your PATH/PYTHONPATH.
+#
+# =============================================================================
+
+
+# --- REQUIRED -- the app will not launch without these ----------------------
+
+PySide6==6.11.2          # GUI framework (every window, tab, and dialog)
+matplotlib==3.10.9       # every plot/canvas: design views, shadow simulation,
+                          # chamber diagrams, resistance graphs
+numpy==2.4.4             # numeric arrays, used throughout the geometry and
+                          # analysis code
+scipy==1.17.1            # linear regression + curve fitting for the
+                          # Interpret Results tab (Ambegaokar-Baratoff fit)
+shapely==2.1.2           # 2D geometry (polygon overlap, shadow-casting math)
+gdstk==1.0.1             # reads real .gds layout files; also the engine
+                          # behind klayout_pya_shim.py's KLayout-script support
+QtAwesome==1.4.2         # icon set used throughout the toolbar and buttons
+                          # (import name: qtawesome)
+
+
+# --- OPTIONAL -- only needed for specific features ---------------------------
+# Uncomment whichever of these you want (see STEP 3 and STEP 4 above for the
+# non-pip setup each one also needs), then re-run:
+#     pip install -r requirements.txt
+
+# Hands-free voice measurement (Measure Resistance tab) -- needs a
+# microphone and, on Linux, the system PortAudio library (STEP 3b above):
+# sounddevice==0.5.5
+
+# Voice engine option 1 of 2 -- recommended for general accuracy; downloads
+# its own model weights automatically on first use:
+# faster-whisper==1.2.1
+
+# Voice engine option 2 of 2 -- smaller/faster, needs a manually downloaded
+# model folder (STEP 3c above). Version below is the latest available at
+# the time of this release; not independently verified against this app in
+# the environment this release was tested in the way the pins above were --
+# if you hit an incompatibility, try the most recent 0.3.x release instead.
+# vosk==0.3.45
+
+# "Ask AI" assistant -- also needs the separate Ollama application (STEP 4
+# above), NOT just this Python client. Version below is the latest available
+# at the time of this release; not independently verified against this app
+# in the environment this release was tested in the way the pins above were.
+# ollama==0.6.3
